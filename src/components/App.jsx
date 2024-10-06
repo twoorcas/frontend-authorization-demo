@@ -1,5 +1,11 @@
 import { useState } from "react"; // New import
-import { Routes, Route, Navigate, useNavigate } from "react-router-dom";
+import {
+  Routes,
+  Route,
+  Navigate,
+  useNavigate,
+  useEffect,
+} from "react-router-dom";
 import Ducks from "./Ducks";
 import Login from "./Login";
 import MyProfile from "./MyProfile";
@@ -7,11 +13,16 @@ import Register from "./Register";
 import "./styles/App.css";
 import ProtectedRoute from "./ProtectedRoute";
 import * as auth from "../utils/auth";
-
+import * as api from "../utils/api";
 function App() {
   const [userData, setUserData] = useState({ username: "", email: "" });
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const navigate = useNavigate();
+
+  // Invoke the hook. It's necessary to invoke the hook in both
+  // components.
+  const location = useLocation();
+
   const handleRegistration = ({
     username,
     email,
@@ -22,36 +33,54 @@ function App() {
       auth
         .register(username, password, email)
         .then(() => {
-          // handle succesful registration
-          // Navigate user to login page.
           navigate("/login");
         })
         .catch(console.error);
     }
   };
-  // handleLogin accepts one parameter: an object with two properties.
+
   const handleLogin = ({ username, password }) => {
-    // If username or password empty, return without sending a request.
     if (!username || !password) {
       return;
     }
 
-    // We pass the username and password as positional arguments. The
-    // authorize function is set up to rename `username` to `identifier`
-    // before sending a request to the server, because that is what the
-    // API is expecting.
     auth
       .authorize(username, password)
       .then((data) => {
         if (data.jwt) {
           setToken(data.jwt);
-          setUserData(data.user); // save user's data to state
-          setIsLoggedIn(true); // log the user in
-          navigate("/ducks"); // send them to /ducks
+          setUserData(data.user);
+          setIsLoggedIn(true);
+
+          // After login, instead of navigating always to /ducks,
+          // navigate to the location that is stored in state. If
+          // there is no stored location, we default to
+          // redirecting to /ducks.
+          const redirectPath = location.state?.from?.pathname || "/ducks";
+          navigate(redirectPath);
         }
       })
       .catch(console.error);
   };
+
+  useEffect(() => {
+    const jwt = getToken();
+
+    if (!jwt) {
+      return;
+    }
+
+    api
+      .getUserInfo(jwt)
+      .then(({ username, email }) => {
+        setIsLoggedIn(true);
+        setUserData({ username, email });
+        // Remove the call to the navigate() hook: it's not
+        // necessary anymore.
+      })
+      .catch(console.error);
+  }, []);
+
   return (
     <Routes>
       <Route
@@ -62,6 +91,7 @@ function App() {
           </ProtectedRoute>
         }
       />
+
       <Route
         path="/my-profile"
         element={
@@ -70,22 +100,33 @@ function App() {
           </ProtectedRoute>
         }
       />
+      {/* Wrap our /login route in a ProtectedRoute. Make sure to 
+      specify the anoymous prop, to redirect logged-in users 
+      to "/". */}
       <Route
         path="/login"
         element={
-          <div className="loginContainer">
-            <Login handleLogin={handleLogin} />
-          </div>
+          <ProtectedRoute isLoggedIn={isLoggedIn} anonymous>
+            <div className="loginContainer">
+              <Login handleLogin={handleLogin} />
+            </div>
+          </ProtectedRoute>
         }
       />
+      {/* Wrap our /register route in a ProtectedRoute. Make sure to
+      specify the anoymous prop, to redirect logged-in users 
+      to "/". */}
       <Route
         path="/register"
         element={
-          <div className="registerContainer">
-            <Register handleRegistration={handleRegistration} />
-          </div>
+          <ProtectedRoute isLoggedIn={isLoggedIn} anonymous>
+            <div className="registerContainer">
+              <Register handleRegistration={handleRegistration} />
+            </div>
+          </ProtectedRoute>
         }
       />
+
       <Route
         path="*"
         element={
@@ -99,5 +140,3 @@ function App() {
     </Routes>
   );
 }
-
-export default App;
