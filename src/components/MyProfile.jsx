@@ -3,12 +3,12 @@ import "./styles/MyProfile.css";
 
 function MyProfile({
   userData = { username: "Username here", email: "Email here" },
-  setIsLoggedIn,
 }) {
   const { username, email } = userData;
+  const { setIsLoggedIn } = useContext(AppContext);
   return (
     <>
-      <NavBar setIsLoggedIn={setIsLoggedIn} />
+      <NavBar />
       <div className="my-profile">
         <div className="my-profile__container">
           <div className="my-profile__header">

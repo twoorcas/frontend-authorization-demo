@@ -1,21 +1,18 @@
 // New import - useLocation
+import { useContext } from "react";
 import { Navigate, useLocation } from "react-router-dom";
-
+import AppContext from "../../src/context/AppContext";
 // New prop - anonymous. This prop will be used to indicate routes
 // that can be visited anonymously (i.e., without authorization).
 // The two 'anonymous' routes in this application are /register
 // and /login.
-export default function ProtectedRoute({
-  isLoggedIn,
-  children,
-  anonymous = false,
-}) {
+export default function ProtectedRoute({ children, anonymous = false }) {
   // Invoke the useLocation hook and access the value of the
   // 'from' property from its state object. If there is no 'from'
   // property we default to "/".
   const location = useLocation();
   const from = location.state?.from || "/";
-
+  const { isLoggedIn } = useContext(AppContext);
   // If the user is logged in we redirect them away from our
   // anonymous routes.
   if (anonymous && isLoggedIn) {
